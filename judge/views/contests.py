@@ -1749,7 +1749,8 @@ class CreateContest(PermissionRequiredMixin, TitleMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        data['contest_problem_formset'] = self.get_contest_problem_formset()
+        if 'contest_problem_formset' not in data:
+            data['contest_problem_formset'] = self.get_contest_problem_formset()
         return data
 
     def save_contest_form(self, form):
@@ -1759,7 +1760,7 @@ class CreateContest(PermissionRequiredMixin, TitleMixin, CreateView):
 
     def post(self, request, *args, **kwargs):
         self.object = None
-        form = ContestForm(request.POST or None)
+        form = self.get_form()
         form_set = self.get_contest_problem_formset()
         if form.is_valid() and form_set.is_valid():
             with revisions.create_revision(atomic=True):
@@ -1773,7 +1774,9 @@ class CreateContest(PermissionRequiredMixin, TitleMixin, CreateView):
             on_new_contest.delay(self.object.key)
             return HttpResponseRedirect(self.get_success_url())
         else:
-            return self.render_to_response(self.get_context_data(*args, **kwargs))
+            return self.render_to_response(
+                self.get_context_data(form=form, contest_problem_formset=form_set),
+            )
 
     def dispatch(self, request, *args, **kwargs):
         try:
